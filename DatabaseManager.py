@@ -4,7 +4,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="ASPJuser",
     password="P@55w0rD",
-    database="mydatabase"
+    database="vulnerable"
 )
 
 tupleCursor = db.cursor(buffered=True)

@@ -16,7 +16,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="ASPJuser",
     password="P@55w0rD",
-    database="mydatabase"
+    database="vulnerable"
 )
 
 tupleCursor = db.cursor(buffered=True)
@@ -253,7 +253,7 @@ def searchPosts():
 
     return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
 
-@app.route('/viewPost/<int:postID>', methods=["GET", "POST"])
+@app.route('/viewPost/<int:postID>/', methods=["GET", "POST"])
 def viewPost(postID):
     if not sessionInfo['login']:
         return redirect('/login')
@@ -536,7 +536,7 @@ def topics():
     listOfTopics = tupleCursor.fetchall()
     return render_template('topics.html', currentPage='topics', **sessionInfo, listOfTopics=listOfTopics)
 
-@app.route('/indivTopic/<topicID>', methods=["GET", "POST"])
+@app.route('/indivTopic/<topicID>/', methods=["GET", "POST"])
 def indivTopic(topicID):
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
@@ -656,7 +656,7 @@ def adminHome():
 
     return render_template('adminHome.html', currentPage='adminHome', **sessionInfo, searchBarForm = searchBarForm,recentPosts = recentPosts)
 
-@app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
+@app.route('/adminViewPost/<int:postID>/', methods=["GET", "POST"])
 def adminViewPost(postID):
     commentForm = Forms.CommentForm(request.form)
     replyForm = Forms.ReplyForm(request.form)
