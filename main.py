@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, send_from_directory
 import mysql.connector, re
 import Forms
+import json
 from datetime import datetime
 # Flask mail
 import os
@@ -43,18 +44,9 @@ cursor = db.cursor()
 
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 mail = Mail(app)
-""" For testing purposes only. To make it convenient cause I can't remember all the account names.
-Uncomment the account that you would like to use. To run the program as not logged in, run the first one."""
-sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
+
+
+
 
 def get_all_topics(option):
     sql = "SELECT TopicID, Content FROM topic ORDER BY Content"
@@ -70,9 +62,14 @@ def get_all_topics(option):
 
 @app.route('/postVote', methods=["GET", "POST"])
 def postVote():
-    if not sessionInfo['login']:
-        flash('You must be logged in to vote.', 'warning')
-        return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
+    sessionInfo=request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo=json.loads(sessionInfo)
+        if sessionInfo['login']:
+            flash('Invalid login')
+            return redirect('/login')
 
     data = request.get_json(force=True)
     currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), data['postID'])
@@ -132,9 +129,11 @@ def postVote():
 
 @app.route('/commentVote', methods=["GET", "POST"])
 def commentVote():
+    sessionInfo=json.loads(request.cookies.get('sessionInfo'))
+    print(sessionInfo)
     if not sessionInfo['login']:
         flash('You must be logged in to vote.', 'warning')
-        return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
+        return redirect('/login')
 
     data = request.get_json(force=True)
     print(data)
@@ -195,10 +194,24 @@ def commentVote():
 
 @app.route('/')
 def main():
-    return redirect("/home")
+    if request.headers.get('Referer') is not None:
+        resp=make_response(redirect(request.headers.get("Referer")))
+    else:
+        resp = make_response(redirect("/home"))
+
+    if request.cookies.get('sessionInfo') is None:
+        sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
+        resp.set_cookie('sessionInfo',json.dumps(sessionInfo))
+    return resp
 
 @app.route('/home', methods=["GET", "POST"])
 def home():
+    sessionInfo=request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo=json.loads(sessionInfo)
+
     searchBarForm = Forms.SearchBarForm(request.form)
     searchBarForm.topic.choices = get_all_topics('all')
     if request.method == 'POST' and searchBarForm.validate():
@@ -250,13 +263,18 @@ def searchPosts():
     for post in relatedPosts:
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
-
-    return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
+    return render_template('searchPost.html', currentPage='search', searchBarForm=searchBarForm, postList=relatedPosts)
 
 @app.route('/viewPost/<int:postID>/', methods=["GET", "POST"])
 def viewPost(postID):
-    if not sessionInfo['login']:
-        return redirect('/login')
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
 
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
@@ -323,8 +341,14 @@ def viewPost(postID):
 
 @app.route('/addPost', methods=["GET", "POST"])
 def addPost():
-    if not sessionInfo['login']:
-        return redirect('/login')
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
 
     postForm = Forms.PostForm(request.form)
     postForm.topic.choices = get_all_topics('default')
@@ -347,8 +371,14 @@ def addPost():
 
 @app.route('/feedback', methods=["GET", "POST"])
 def feedback():
-    if not sessionInfo['login']:
-        return redirect('/login')
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
     feedbackForm = Forms.FeedbackForm(request.form)
 
     if request.method == 'POST' and feedbackForm.validate():
@@ -367,6 +397,12 @@ def feedback():
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    sessionInfo=request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo=json.loads(sessionInfo)
+
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
         sql = "SELECT UserID, Username, isAdmin FROM user WHERE"
@@ -399,25 +435,45 @@ def login():
             sessionRecord.write(record)
             sessionRecord.close()
             flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-            if sessionInfo['isAdmin']:
-                return redirect('/adminHome')
-            else:
-                return redirect('/home') # Change this later to redirect to profile page
 
+
+            if sessionInfo['isAdmin']:
+                resp = make_response(redirect('/adminHome'))
+            else:
+               resp=make_response(redirect('/home')) # Change this later to redirect to profile page
+            resp.set_cookie('sessionInfo', json.dumps(sessionInfo))
+
+            return resp
     return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm)
 
 @app.route('/logout')
 def logout():
-    sessionInfo['login'] = False
-    sessionInfo['currentUser'] = 0
-    sessionInfo['username'] = ''
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
+
     sessionRecord = open("templates\Files\sessionRecord.txt", "a")
     record = "%s signed out at %s \n" % (sessionInfo['username'], datetime.now())
+    sessionRecord.write(record)
     sessionRecord.close()
-    return redirect('/home')
+    sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
+    resp=make_response(redirect('/home'))
+    resp.set_cookie('sessionInfo',expires=0)
+    return resp
 
 @app.route('/signup', methods=["GET", "POST"])
 def signUp():
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+
     signUpForm = Forms.SignUpForm(request.form)
 
     if request.method == 'POST' and signUpForm.validate():
@@ -451,13 +507,23 @@ def signUp():
             sessionRecord = open("templates\Files\sessionRecord.txt", "a")
             record = "New account %s created at %s \n" % (sessionInfo['username'], datetime.now())
             sessionRecord.close()
+            resp=make_response(redirect('/home'))
+            resp.set_cookie('sessionInfo',json.dumps(sessionInfo))
             flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-            return redirect('/home')
-
+            return resp
     return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm)
 
 @app.route('/profile/<username>', methods=["GET", "POST"])
 def profile(username):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
+
     updateProfileForm = Forms.SignUpForm(request.form)
     sql = "SELECT * FROM user WHERE user.Username='" + str(username) + "'"
     dictCursor.execute(sql)
@@ -530,11 +596,20 @@ def profile(username):
 
 @app.route('/topics')
 def topics():
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
+
     # uncomment from here
     sql = "SELECT Content,TopicID FROM topic ORDER BY Content "
     tupleCursor.execute(sql)
     listOfTopics = tupleCursor.fetchall()
-    return render_template('topics.html', currentPage='topics', **sessionInfo, listOfTopics=listOfTopics)
+    return render_template('topics.html', currentPage='topics', listOfTopics=listOfTopics)
 
 @app.route('/indivTopic/<topicID>/', methods=["GET", "POST"])
 def indivTopic(topicID):
@@ -551,10 +626,22 @@ def indivTopic(topicID):
     topic = "SELECT Content FROM topic WHERE topic.TopicID=" + str(topicID)
     tupleCursor.execute(topic)
     topic=tupleCursor.fetchone()
-    return render_template('indivTopic.html', currentPage='indivTopic', **sessionInfo, recentPosts=recentPosts, topic = topic[0])
+    return render_template('indivTopic.html', currentPage='indivTopic', recentPosts=recentPosts, topic = topic[0])
 
 @app.route('/adminProfile/<username>', methods=["GET", "POST"])
 def adminUserProfile(username):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     sql = "SELECT * FROM user WHERE user.Username='" + str(username) + "'"
     dictCursor.execute(sql)
     userData = dictCursor.fetchone()
@@ -621,15 +708,27 @@ def adminUserProfile(username):
                 flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
             else:
                 flash('Account successfully updated!', 'success')
-
-            return redirect('/adminProfile/' + sessionInfo['username'])
+            resp=make_response( redirect('/adminProfile/' + sessionInfo['username']))
+            resp.set_cookie('sessionInfo',json.dumps(sessionInfo))
+            return resp
 
     return render_template("adminProfile.html", currentPage = "myProfile", **sessionInfo, userData = userData, recentPosts = recentPosts, admin=admin, updateProfileForm=updateProfileForm)
 
-
-
 @app.route('/adminHome', methods=["GET", "POST"])
 def adminHome():
+    sessionInfo=request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo=json.loads(sessionInfo)
+        print(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin']!=1:
+            flash("You do not have access")
+            return redirect('/home')
+
     searchBarForm = Forms.SearchBarForm(request.form)
     searchBarForm.topic.choices = get_all_topics('all')
     if request.method == 'POST' and searchBarForm.validate():
@@ -653,11 +752,23 @@ def adminHome():
             post['UserVote'] = 0
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
-
     return render_template('adminHome.html', currentPage='adminHome', **sessionInfo, searchBarForm = searchBarForm,recentPosts = recentPosts)
 
 @app.route('/adminViewPost/<int:postID>/', methods=["GET", "POST"])
 def adminViewPost(postID):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        print(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     commentForm = Forms.CommentForm(request.form)
     replyForm = Forms.ReplyForm(request.form)
 
@@ -723,6 +834,19 @@ def adminViewPost(postID):
 
 @app.route('/adminTopics')
 def adminTopics():
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        print(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     sql = "SELECT Content,TopicID FROM topic ORDER BY Content "
     tupleCursor.execute(sql)
     listOfTopics = tupleCursor.fetchall()
@@ -730,6 +854,18 @@ def adminTopics():
 
 @app.route('/adminIndivTopic/<topicID>', methods=["GET", "POST"])
 def adminIndivTopic(topicID):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
@@ -747,8 +883,14 @@ def adminIndivTopic(topicID):
 
 @app.route('/addTopic', methods=["GET", "POST"])
 def addTopic():
-    if not sessionInfo['login']:
-        return redirect('/login')
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
     sql = "SELECT Content FROM topic ORDER BY Content"
 
     tupleCursor.execute(sql)
@@ -775,6 +917,18 @@ def addTopic():
 
 @app.route('/adminUsers')
 def adminUsers():
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     sql = "SELECT Username From user"
     tupleCursor.execute(sql)
     listOfUsernames = tupleCursor.fetchall()
@@ -783,6 +937,15 @@ def adminUsers():
 
 @app.route('/adminDeleteUser/<username>', methods=['POST'])
 def deleteUser(username):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
+
     user_email = "SELECT Email FROM user WHERE user.username='"+username+"'"
     tupleCursor.execute(user_email)
     sql = "DELETE FROM user WHERE user.username= '"+username+"'"
@@ -804,6 +967,18 @@ def deleteUser(username):
 
 @app.route('/adminDeletePost/<postID>', methods=['POST','GET'])
 def deletePost(postID):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     sql = "SELECT post.Content, post.DatetimePosted, post.postID, user.Username, user.email "
     sql += "FROM post"
     sql+= " INNER JOIN user ON post.UserID = user.UserID"
@@ -832,6 +1007,19 @@ def deletePost(postID):
 
 @app.route('/adminFeedback')
 def adminFeedback():
+
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
     sql += "FROM feedback"
     sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
@@ -842,6 +1030,16 @@ def adminFeedback():
 
 @app.route('/replyFeedback/<feedbackID>',methods=["GET","POST"])
 def replyFeedback(feedbackID):
+
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash("please log in first")
+            return redirect('/login')
+
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
     sql += "FROM feedback"
     sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
@@ -872,6 +1070,18 @@ def replyFeedback(feedbackID):
 
 @app.route('/adminFiles')
 def list_files():
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     files = []
     for filename in os.listdir(app.config['UPLOAD_FOLDER']):
         path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -882,6 +1092,18 @@ def list_files():
 
 @app.route('/adminFiles/<path:path>')
 def download(path):
+    sessionInfo = request.cookies.get('sessionInfo')
+    if sessionInfo is None:
+        return redirect('/')
+    else:
+        sessionInfo = json.loads(sessionInfo)
+        if not sessionInfo['login']:
+            flash('Please log in')
+            return redirect('/login')
+        elif sessionInfo['isAdmin'] != 1:
+            flash("You do not have access")
+            return redirect('/home')
+
     return send_from_directory(directory=app.config['UPLOAD_FOLDER'], filename=path, as_attachment=True)
 
 
