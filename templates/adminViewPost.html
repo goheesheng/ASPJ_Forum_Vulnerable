@@ -96,15 +96,7 @@
             </div> <!--Sub Comment-->
           {% endfor %}
         {% endif %}
-
-      </div> <!--Comment-->
-      {% endfor %}
-
-    </div> <!--Column-->
-  </div> <!--Row-->
-</div> <!--Container-->
-
-<div class="modal fade" id="replyModal" tabindex="-1" role="dialog" aria-labelledby="replyModal" aria-hidden="true">
+    <div class="modal fade" id="replyModal" tabindex="-1" role="dialog" aria-labelledby="replyModal" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
         <div class="modal-header">
@@ -116,7 +108,7 @@
         <div class="modal-body">
           <form method="POST" id="replyForm">
             {{ render_field_no_label(replyForm.reply, class= "form-control") }}
-            {{ render_field_no_label(replyForm.repliedID, class= "form-control") }}
+            {{ render_field_no_label(replyForm.repliedID,value= comment.CommentID ,class= "form-control") }}
           </form>
         </div>
         <div class="modal-footer">
@@ -126,6 +118,14 @@
     </div> <!--Modal content-->
   </div> <!--Modal dislog-->
 </div> <!--Main Modal div-->
+
+
+      </div> <!--Comment-->
+      {% endfor %}
+
+    </div> <!--Column-->
+  </div> <!--Row-->
+</div> <!--Container-->
 
 
 {% endautoescape %}
