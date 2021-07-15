@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, send_from_directory
+from flask_talisman import Talisman
 import mysql.connector, re
 import Forms
 import json
@@ -11,8 +12,6 @@ import asyncio
 from threading import Thread
 import DatabaseManager
 
-#ernestmadethiscomment
-#eileengae
 db = mysql.connector.connect(
     host="localhost",
     user="ASPJuser",
@@ -26,7 +25,18 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-
+# csp = {
+#     'default-src': [
+#         '\'self\'',
+#         'https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js',
+#         'https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js',
+#         'https://code.jquery.com/jquery-3.5.1.slim.min.js',
+#         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+#         'https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css'
+#
+#     ]
+# }
+# talisman = Talisman(app, content_security_policy=csp)
 app.config.update(
     MAIL_SERVER= 'smtp.office365.com',
     MAIL_PORT= 587,
@@ -363,6 +373,7 @@ def addPost():
         sql += " , '" + postForm.content.data + "'"
         sql += " , 0, 0)"
         tupleCursor.execute(sql)
+
         db.commit()
         flash('Post successfully created!', 'success')
         return redirect('/home')
@@ -721,7 +732,6 @@ def adminHome():
         return redirect('/')
     else:
         sessionInfo=json.loads(sessionInfo)
-        print(sessionInfo)
         if not sessionInfo['login']:
             flash('Please log in')
             return redirect('/login')
@@ -825,6 +835,7 @@ def adminViewPost(postID):
         sql += " , '" + replyForm.repliedID.data + "'"
         sql += " , '" + replyForm.reply.data + "'"
         sql += " , '" + dateTime + "')"
+        print(sql,'1231231')
         tupleCursor.execute(sql)
         db.commit()
         flash('Comment posted!', 'success')
