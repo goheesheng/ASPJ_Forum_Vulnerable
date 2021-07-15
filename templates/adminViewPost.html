@@ -80,7 +80,7 @@
         <p>{{ comment.Content }}</p>
 
         <div class="comment-functions text-right" id="comment-votes-{{ comment.CommentID }}">
-          <a href="#" data-toggle="modal" data-target="#replyModal" data-id="{{ comment.CommentID }}"><i class="fa fa-reply"></i> Reply</a>
+          <a href="#" data-toggle="modal" data-target="#replyModal{{comment.CommentID}}" data-id="{{ comment.CommentID }}"><i class="fa fa-reply"></i> Reply</a>
           <a onclick="commentVote(this);" data-vote="1" data-comment="{{ comment.CommentID }}" class="ml-3"><i class="fa fa-arrow-up {% if comment.UserVote==1 %}active{% endif %}"></i></a>
           <span id="commentTotalVotes">{{ comment.TotalVotes }}</span>
           <a onclick="commentVote(this);" data-vote="-1" data-comment="{{ comment.CommentID }}"><i class="fa fa-arrow-down {% if comment.UserVote==-1 %}active{% endif %}"></i></a>
@@ -96,7 +96,7 @@
             </div> <!--Sub Comment-->
           {% endfor %}
         {% endif %}
-    <div class="modal fade" id="replyModal" tabindex="-1" role="dialog" aria-labelledby="replyModal" aria-hidden="true">
+  <div class="modal fade" id="replyModal{{comment.CommentID}}" tabindex="-1" role="dialog" aria-labelledby="replyModal" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
         <div class="modal-header">
@@ -106,14 +106,14 @@
           </button>
         </div>
         <div class="modal-body">
-          <form method="POST" id="replyForm">
+          <form method="POST" id="replyForm{{comment.CommentID}}">
             {{ render_field_no_label(replyForm.reply, class= "form-control") }}
             {{ render_field_no_label(replyForm.repliedID,value= comment.CommentID ,class= "form-control") }}
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary cancel-form" data-dismiss="modal">Close</button>
-          <input type="submit" form="replyForm" class="btn btn-success">
+          <button type="button" class="btn btn-secondary cancel-form" data-dismiss="modal{{comment.commentID}}">Close</button>
+          <input type="submit" form="replyForm{{comment.CommentID}}" class="btn btn-success">
         </div>
     </div> <!--Modal content-->
   </div> <!--Modal dislog-->
