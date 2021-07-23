@@ -1,7 +1,6 @@
 from wtforms import Form, validators, StringField, TextAreaField, PasswordField, SelectField, HiddenField
 from wtforms.fields import DateField
 from wtforms_components import DateRange
-import re
 from datetime import date
 
 class SearchBarForm(Form):
@@ -14,7 +13,7 @@ class FeedbackForm(Form):
     comment = TextAreaField('Comment', [validators.DataRequired()], render_kw={"rows": 10, "placeholder": "Enter comment here..."})
 
 class LoginForm(Form):
-    username = StringField('Username', [validators.DataRequired(),validators.Regexp(re.compile('^([a-zA-Z0-9]+)([a-zA-Z0-9]{2,5})$'))]) #,message= "Username can contain only alphanumeric characters!")])
+    username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [validators.DataRequired()])
 
 class SignUpForm(Form):
@@ -23,8 +22,8 @@ class SignUpForm(Form):
     minYear = int(year) - 13
     month, day = int(month), int(day)
 
-    email = StringField('Email Address', [validators.DataRequired(), validators.Regexp(re.compile('^.+@[^.].*\.[a-z]{2,10}$'), message="Invalid email address.")])
-    username = StringField('Username', [validators.DataRequired(),validators.Regexp(re.compile('^([a-zA-Z0-9]+)([a-zA-Z0-9]{2,5})$'),message= "Username can contain only alphanumeric characters!")])
+    email = StringField('Email Address', [validators.DataRequired(), validators.Regexp(r'^.+@[^.].*\.[a-z]{2,10}$', message="Invalid email address.")])
+    username = StringField('Username', [validators.DataRequired()])
     dob = DateField('Date of Birth', [DateRange(max=date(minYear, month, day), message="You have to be at least 13 years old to register for an account.")])
     status = StringField('Status')
     name = StringField('Full Name', [validators.DataRequired()])
