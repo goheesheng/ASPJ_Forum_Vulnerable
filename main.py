@@ -25,18 +25,18 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-csp = {
-    'default-src': [
-        '\'self\'',
-        'https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js',
-        'https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js',
-        'https://code.jquery.com/jquery-3.5.1.slim.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
-        'https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css'
-
-    ]
-}
-talisman = Talisman(app, content_security_policy=csp)
+# csp = {
+#     'script-src': [
+#         '\'self\'',
+#         'https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js',
+#         'https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js',
+#         'https://code.jquery.com/jquery-3.5.1.slim.min.js',
+#         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+#         'https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css'
+#
+#     ]
+# }
+# talisman = Talisman(app, content_security_policy=csp)
 app.config.update(
     MAIL_SERVER= 'smtp.office365.com',
     MAIL_PORT= 587,
